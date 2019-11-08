@@ -155,7 +155,15 @@ then
     done
 fi
 sgdisk -o $stick_dev
-sgdisk -n 1:0:0 -t 1:AF00 -c 1:"disk image" -A 1:set:2 $stick_dev
+
+# partition size must be a multiple of 4K
+sector_size=$(cat /sys/block/$(basename $stick_dev)/queue/physical_block_size)
+sector_start=$(sgdisk -F $stick_dev)
+sector_end=$(sgdisk -E $stick_dev)
+free_sectors=$((sector_end-sector_start+1))
+sector_end_aligned=$((sector_start+free_sectors-1-(free_sectors%(4096/$sector_size)))) 
+
+sgdisk -n 1:$sector_start:$sector_end_aligned -t 1:AF00 -c 1:"disk image" -A 1:set:2 $stick_dev
 sync
 stick_partition="$(map_partitions "$stick_dev")"
 echo "\nAll information on the target partition ${stick_partition} is going to be ERASED\n"
